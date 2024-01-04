@@ -23,6 +23,23 @@ int mineCount = 99;       // 雷的数量
 
 enum CellState { CLOSED, OPENED, FLAGGED };
 
+// 写一个函数判断一个字符串是否由两个空格分开了三个数字
+bool is_valid(std::string input) {
+    int space = 0;
+    for (auto c : input) {
+        if (c == ' ') space++;
+    }
+
+    if (space != 2) return false;
+
+    std::stringstream ss(input);
+    int w = 0, h = 0, m = 0;
+    ss >> w >> h >> m;
+
+    if (w && h && m) return true;
+    return false;
+}
+
 struct Cell {
     bool mine;
     int adjacentMines;
@@ -172,27 +189,58 @@ class Minesweeper : public Fl_Window {
         Minesweeper* game = static_cast<Minesweeper*>(data);
 
         if (!game->Levelsetted) {
-            std::string input;
+            const char* input;
             input = fl_input(
-                "Please input the numbers of the size of map and the mines you "
-                "want to set:");
+                "Please input the numbers of the size of map and "
+                "the mines you want to set:");
+
+            if (input == nullptr) {
+                game->reset();
+                return;
+            }
+
+            std::string inpu(input);
+
+            // 去掉inpu第一个数字前的空格
+            while (inpu[0] == ' ') {
+                inpu.erase(0, 1);
+            }
+
+            // 如果选择取消，返回
+            if (inpu.empty()) {
+                fl_alert("Please input three numbers!");
+                game->reset();
+                return;
+            }
 
             // 检查输入是否合法
-            for (auto c : input) {
-                if (!isdigit(c) && c != ' ') {
-                    fl_alert("Please input a number!");
-                    game->Levelsetted = false;
-                    game->reset();
-                    return;
-                }
+            if (!is_valid(inpu)) {
+                fl_alert("Please input three numbers!");
+                game->reset();
+                return;
             }
 
             // 将以空格分开的三个数字分别存入w,h,m
-            int w, h, m;
+            int w = 0, h = 0, m = 0;
             std::stringstream ss(input);
             ss >> w >> h >> m;
-            game->set_diy(w, h, m);
-            game->Levelsetted = true;
+
+            if (w && h && m) {
+                if (mineCount > width * height) {
+                    fl_alert("The number of mines is too large!");
+                    game->reset();
+                }
+
+                else {
+                    game->set_diy(w, h, m);
+                    game->Levelsetted = true;
+                }
+            }
+
+            else {
+                fl_alert("Please input three numbers!");
+                game->reset();
+            }
         }
     }
 
@@ -201,11 +249,6 @@ class Minesweeper : public Fl_Window {
         width = w;
         height = h;
         mineCount = m;
-        if (mineCount > width * height) {
-            fl_alert("The number of mines is too large!");
-            Levelsetted = false;
-            reset();
-        }
         initialize();
         redraw();
     }
